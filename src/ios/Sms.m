@@ -9,42 +9,62 @@
     return self;
 }
 
-- (void)send:(CDVInvokedUrlCommand*)command {
-    
-    self.callbackID = command.callbackId;
-    
-    if(![MFMessageComposeViewController canSendText]) {
-        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Notice"
-                                                        message:@"SMS Text not available."
-                                                       delegate:self
-                                              cancelButtonTitle:@"OK"
-                                              otherButtonTitles:nil
-                              ];
-        [alert show];
-        return;
-    }
-    
-    MFMessageComposeViewController *composeViewController = [[MFMessageComposeViewController alloc] init];
-    composeViewController.messageComposeDelegate = self;
-    
-    NSString* body = [command.arguments objectAtIndex:1];
-    if (body != nil) {
-        BOOL replaceLineBreaks = [[command.arguments objectAtIndex:3] boolValue];
-        if (replaceLineBreaks) {
-            body = [body stringByReplacingOccurrencesOfString: @"\\n" withString: @"\n"];
+- (bool)isSMSAvailable {
+    Class messageClass = (NSClassFromString(@"MFMessageComposeViewController"));
+    return messageClass != nil && [messageClass canSendText];
+}
+
+- (NSString *)parseBody:(NSString*)body replaceLineBreaks:(BOOL)replaceLineBreaks {
+    return ((id)body != [NSNull null] && replaceLineBreaks) ? [body stringByReplacingOccurrencesOfString: @"\\n" withString: @"\n"] : body;
+}
+
+- (NSMutableArray *)parseRecipients:(id)param {
+    NSMutableArray *recipients = [[NSMutableArray alloc] init];
+    if (![param isKindOfClass:[NSNull class]]) {
+        if ([param isKindOfClass:[NSString class]]) {
+            [recipients addObject:[NSString stringWithFormat:@"%@", param]];
         }
-        [composeViewController setBody:body];
-    }
-    
-    NSMutableArray* recipients = [command.arguments objectAtIndex:0];
-    if (recipients != nil) {
+        else if ([param isKindOfClass:[NSMutableArray class]]) {
+            recipients = param;
+        }
+
+        // http://stackoverflow.com/questions/19951040/mfmessagecomposeviewcontroller-opens-mms-editing-instead-of-sms-and-buddy-name
         if ([recipients.firstObject isEqual: @""]) {
             [recipients replaceObjectAtIndex:0 withObject:@"?"];
         }
-        
-        [composeViewController setRecipients:recipients];
     }
-    
+    return recipients;
+}
+
+- (void)send:(CDVInvokedUrlCommand*)command {
+
+    self.callbackID = command.callbackId;
+
+    // test SMS availability
+    if(![self isSMSAvailable]) {
+        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"SMS_NOT_AVAILABLE"];
+        return [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackID];
+    }
+
+    // retrieve the options dictionnary
+    NSDictionary* options = [command.arguments objectAtIndex:2];
+    // parse the body parameter
+    NSString *body = [self parseBody:[command.arguments objectAtIndex:1] replaceLineBreaks:[[options objectForKey:@"replaceLineBreaks"]  boolValue]];
+    // parse the recipients parameter
+    NSMutableArray *recipients = [self parseRecipients:[command.arguments objectAtIndex:0]];
+
+    // initialize the composer
+    MFMessageComposeViewController *composeViewController = [[MFMessageComposeViewController alloc] init];
+    composeViewController.messageComposeDelegate = self;
+
+    // add recipients
+    [composeViewController setRecipients:recipients];
+
+    // append the body to the composer
+    if ((id)body != [NSNull null]) {
+        [composeViewController setBody:body];
+    }
+
     [self.viewController presentViewController:composeViewController animated:YES completion:nil];
 }
 
@@ -54,7 +74,7 @@
     // Notifies users about errors associated with the interface
     int webviewResult = 0;
     NSString* message = @"";
-    
+
     switch(result) {
         case MessageComposeResultCancelled:
             webviewResult = 0;
@@ -73,13 +93,13 @@
             message = @"Unknown error.";
             break;
     }
-    
+
     [self.viewController dismissViewControllerAnimated:YES completion:nil];
-    
+
     if(webviewResult == 1) {
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
                                                           messageAsString:message];
-        
+
         [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackID];
     } else {
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR

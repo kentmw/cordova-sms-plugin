@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin xmlns="http://www.phonegap.com/ns/plugins/1.0"
         xmlns:android="http://schemas.android.com/apk/res/android"
-           id="com.cordova.plugins.sms"
+           id="com.mostlyepic.plugins.sms"
       version="0.1.4">
     <name>Cordova SMS Plugin</name>
     <description>Cross-platform plugin for Cordova / PhoneGap to to easily send SMS. Available for Android and iOS.</description>
@@ -20,12 +20,11 @@
     <platform name="android">
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="Sms">
-                <param name="android-package" value="com.cordova.plugins.sms.Sms"/>
+                <param name="android-package" value="com.mostlyepic.plugins.sms.Sms"/>
             </feature>
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="/manifest">
-            <uses-permission android:name="android.permission.SEND_SMS" />
             <uses-permission android:name="android.permission.READ_PHONE_STATE" />
             <uses-feature android:name="android.hardware.telephony" android:required="false" />
         </config-file>
