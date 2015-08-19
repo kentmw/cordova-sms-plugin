@@ -17,6 +17,7 @@ import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.json.JSONException;
 
 public class Sms extends CordovaPlugin {
@@ -37,8 +38,8 @@ public class Sms extends CordovaPlugin {
             }
             String phoneNumber = args.getJSONArray(0).join(separator).replace("\"", "");
             String message = args.getString(1);
-            String method = args.getString(2);
-            boolean replaceLineBreaks = Boolean.parseBoolean(args.getString(3));
+            JSONObject options = args.getString(2);
+            boolean replaceLineBreaks = Boolean.parseBoolean(options.get('replaceLineBreaks'));
 
             // replacing \n by new line if the parameter replaceLineBreaks is set to true
             if (replaceLineBreaks) {
